@@ -6,6 +6,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates
     ]
 });
@@ -14,7 +15,7 @@ client.once('ready', async () => {
     console.log(`✅ Bot is online as ${client.user.tag}`);
 
     try {
-        await client.user.setUsername('Cord Care'); // ⬅️ এখানে আপনি নতুন নাম দিন
+        await client.user.setUsername('Support'); // ⬅️ এখানে আপনি নতুন নাম দিন
         console.log('📝 Username updated via API.');
     } catch (error) {
         console.error('❌ Failed to update bot username:', error);
@@ -141,38 +142,59 @@ client.on('guildMemberAdd', async (member) => {
 });
 
 client.on('messageCreate', async (message) => {
-    // Ignore bots
     if (message.author.bot) return;
-
-    // Only proceed if message is from the MAIN announcement channel
     if (message.channel.id !== process.env.MAIN_ANNOUNCEMENT_CHANNEL_ID) return;
 
     const guild = message.guild;
+    if (!guild) return;
 
-    // Loop through all members
+    // Extended check for actual content
+    const hasContent = message.content?.trim().length > 0;
+    const hasEmbeds = message.embeds?.length > 0;
+    const hasAttachments = message.attachments?.size > 0;
+    const hasStickers = message.stickers?.size > 0;
+    const hasComponents = message.components?.length > 0;
+
+    if (!hasContent && !hasEmbeds && !hasAttachments && !hasStickers && !hasComponents) {
+        console.log('❌ Skipping empty message (no content/embed/attachment/sticker/component)');
+        return;
+    }
+
+    console.log(`📨 Forwarding: ${message.content || '[non-text]'}`);
+
     const members = await guild.members.fetch();
 
-    members.forEach(async (member) => {
-        if (member.user.bot) return;
+    for (const [, member] of members) {
+        if (member.user.bot) continue;
 
-        // Find their private category by name
         const category = guild.channels.cache.find(
             ch => ch.type === ChannelType.GuildCategory && ch.name === member.user.username
         );
+        if (!category) continue;
 
-        if (!category) return;
-
-        // Find their 'announcement' channel under that category
         const announcementChannel = guild.channels.cache.find(
-            ch => ch.parentId === category.id && ch.name === 'announcement'
+            ch =>
+                ch.parentId === category.id &&
+                ch.name === 'announcement' &&
+                ch.type === ChannelType.GuildText
         );
+        if (!announcementChannel) continue;
 
-        if (!announcementChannel || !announcementChannel.isTextBased()) return;
-
-        // Forward message with prefix
-        await announcementChannel.send(message.content);
-    });
+        try {
+            await announcementChannel.send({
+                content: hasContent ? `${message.content}` : undefined,
+                embeds: hasEmbeds ? message.embeds : undefined,
+                files: hasAttachments ? [...message.attachments.values()] : undefined,
+                stickers: hasStickers ? [...message.stickers.values()] : undefined,
+                components: hasComponents ? message.components : undefined
+            });
+            console.log(`✅ Sent to ${member.user.username}`);
+        } catch (err) {
+            console.error(`❌ Failed to send to ${member.user.username}:`, err.message);
+        }
+    }
 });
+
 
 
 client.login(process.env.TOKEN);
