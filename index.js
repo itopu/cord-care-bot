@@ -96,6 +96,23 @@ client.on('guildMemberAdd', async (member) => {
 
         console.log(`✅ Private channels created for ${member.user.username}`);
 
+        // ✅ Update permissions for #announcement for the new member
+        const announcementChannel = guild.channels.cache.get(process.env.ANNOUNCEMENT_CHANNEL_ID);
+
+        if (announcementChannel) {
+            await announcementChannel.permissionOverwrites.edit(member.id, {
+                ViewChannel: true,
+                ReadMessageHistory: true,
+                SendMessages: false,
+                AddReactions: false,
+                MentionEveryone: false,
+                AttachFiles: false,
+                EmbedLinks: false,
+            });
+
+            console.log(`📢 Announcement permissions set for ${member.user.username}`);
+        }
+
         // Optional Log
         const logChannel = guild.channels.cache.get(process.env.BOT_LOG_ID);
         if (logChannel && logChannel.isTextBased()) {
@@ -113,6 +130,6 @@ client.login(process.env.TOKEN);
 const http = require('http');
 
 http.createServer((req, res) => {
-  res.write('Cord Care Bot is alive!');
-  res.end();
+    res.write('Cord Care Bot is alive!');
+    res.end();
 }).listen(process.env.PORT || 3000);
