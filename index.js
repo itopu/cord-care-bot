@@ -14,7 +14,7 @@ client.once('ready', async () => {
     console.log(`✅ Bot is online as ${client.user.tag}`);
 
     try {
-        await client.user.setUsername('Cord Care Bot'); // ⬅️ এখানে আপনি নতুন নাম দিন
+        await client.user.setUsername('Cord Care'); // ⬅️ এখানে আপনি নতুন নাম দিন
         console.log('📝 Username updated via API.');
     } catch (error) {
         console.error('❌ Failed to update bot username:', error);
