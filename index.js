@@ -108,3 +108,11 @@ client.on('guildMemberAdd', async (member) => {
 });
 
 client.login(process.env.TOKEN);
+
+// 👇 Add at the bottom of index.js
+const http = require('http');
+
+http.createServer((req, res) => {
+  res.write('Cord Care Bot is alive!');
+  res.end();
+}).listen(process.env.PORT || 3000);
