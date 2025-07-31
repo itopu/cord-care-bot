@@ -75,6 +75,39 @@ client.on('guildMemberAdd', async (member) => {
 
         console.log(`✅ Category created: ${category.name}`);
 
+        // ✅ Create Announcement Channel
+        const announcementTextChannel = await guild.channels.create({
+            name: 'announcement',
+            type: ChannelType.GuildText,
+            parent: category,
+            permissionOverwrites: [
+                {
+                    id: guild.roles.everyone.id,
+                    deny: [PermissionsBitField.Flags.ViewChannel]
+                },
+                {
+                    id: member.id,
+                    allow: [
+                        PermissionsBitField.Flags.ViewChannel,
+                        PermissionsBitField.Flags.ReadMessageHistory
+                    ],
+                    deny: [
+                        PermissionsBitField.Flags.SendMessages,
+                        PermissionsBitField.Flags.AddReactions,
+                        PermissionsBitField.Flags.MentionEveryone,
+                        PermissionsBitField.Flags.AttachFiles,
+                        PermissionsBitField.Flags.EmbedLinks
+                    ]
+                },
+                {
+                    id: adminRole.id,
+                    allow: [PermissionsBitField.Flags.Administrator]
+                }
+            ]
+        });
+
+        console.log(`✅ Announcement channel created`);
+
         // ✅ Create Text Channel
         const textChannel = await guild.channels.create({
             name: 'text',
@@ -96,23 +129,6 @@ client.on('guildMemberAdd', async (member) => {
 
         console.log(`✅ Private channels created for ${member.user.username}`);
 
-        // ✅ Update permissions for #announcement for the new member
-        const announcementChannel = guild.channels.cache.get(process.env.ANNOUNCEMENT_CHANNEL_ID);
-
-        if (announcementChannel) {
-            await announcementChannel.permissionOverwrites.edit(member.id, {
-                ViewChannel: true,
-                ReadMessageHistory: true,
-                SendMessages: false,
-                AddReactions: false,
-                MentionEveryone: false,
-                AttachFiles: false,
-                EmbedLinks: false,
-            });
-
-            console.log(`📢 Announcement permissions set for ${member.user.username}`);
-        }
-
         // Optional Log
         const logChannel = guild.channels.cache.get(process.env.BOT_LOG_ID);
         if (logChannel && logChannel.isTextBased()) {
@@ -123,6 +139,41 @@ client.on('guildMemberAdd', async (member) => {
         console.error('❌ Error during channel creation:', err);
     }
 });
+
+client.on('messageCreate', async (message) => {
+    // Ignore bots
+    if (message.author.bot) return;
+
+    // Only proceed if message is from the MAIN announcement channel
+    if (message.channel.id !== process.env.MAIN_ANNOUNCEMENT_CHANNEL_ID) return;
+
+    const guild = message.guild;
+
+    // Loop through all members
+    const members = await guild.members.fetch();
+
+    members.forEach(async (member) => {
+        if (member.user.bot) return;
+
+        // Find their private category by name
+        const category = guild.channels.cache.find(
+            ch => ch.type === ChannelType.GuildCategory && ch.name === member.user.username
+        );
+
+        if (!category) return;
+
+        // Find their 'announcement' channel under that category
+        const announcementChannel = guild.channels.cache.find(
+            ch => ch.parentId === category.id && ch.name === 'announcement'
+        );
+
+        if (!announcementChannel || !announcementChannel.isTextBased()) return;
+
+        // Forward message with prefix
+        await announcementChannel.send(`📢 ${message.content}`);
+    });
+});
+
 
 client.login(process.env.TOKEN);
 
