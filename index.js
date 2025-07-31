@@ -170,7 +170,7 @@ client.on('messageCreate', async (message) => {
         if (!announcementChannel || !announcementChannel.isTextBased()) return;
 
         // Forward message with prefix
-        await announcementChannel.send(`📢 ${message.content}`);
+        await announcementChannel.send(message.content);
     });
 });
 
